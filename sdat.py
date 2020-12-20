@@ -1,5 +1,4 @@
 #Get data
-from sodapy import Socrata
 import pandas as pd
 import difflib
 pd.options.display.max_columns = 500
@@ -193,35 +192,6 @@ def add_features(df, dc =dict(lat=38.9072, lon=-77.036)):
         
     return df
                   
-
-
-#### OLD STYLE FUNCTION
-def get_comps_sdat(address, miles=1, save_csv=False):
-    meta_df = property_metadata(address)
-    query = get_query(meta_df, miles)
-    client = Socrata(url_md, app_id)
-    response = client.get(id_md, query = query)
-    df = pd.DataFrame(response)
-    num = []
-    non_num = []
-    for col in df.columns:
-        try:
-            df[col] = pd.to_numeric(df[col])
-            num.append(col)
-        except:
-            non_num.append(col)
-
-    df['id'] = meta_df.address.iloc[0]
-    df.date = pd.to_datetime( df['date'])
-    df.date2= pd.to_datetime(df['date2'])
-    df['basement'] = df['style_code'].apply(lambda x: 'with basement' in x.lower())
-    df['price_change'] = df['price'].astype(float) - df['price2'].astype(float)
-    df['date_change'] = (df.date - df.date2).dt.days
-    df['norm_price'] = ((1+(0.03/365)) ** (pd.datetime.today() - df['date']).dt.days) * df.price
-    client.close()
-    if save_csv: df.to_csv(meta_df.address.iloc[0] +".csv", index = False)
-    results = (meta_df, df)
-    return results #df
 
 def filter_comps(df, price = 75000, turn_around = 400, t_time = pd.to_datetime('2018-01-01')):
     df_copy = df[
