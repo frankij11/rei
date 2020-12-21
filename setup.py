@@ -15,7 +15,7 @@ setuptools.setup(
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/frankij11/rei",
-    packages=setuptools.find_packages(where=".."),
+    packages=setuptools.find_packages(),
     install_requires = depends,
     #include_package_data = True,
     package_data={"": ['data/*']},
