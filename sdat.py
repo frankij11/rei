@@ -4,8 +4,9 @@ import difflib
 pd.options.display.max_columns = 500
 import requests
 import urllib
-
+import os
 from math import radians, sin, cos, acos
+
 def distance(lat1, lon1, lat2 = 38.870393, lon2=-76.878019):
     try:
         lat1 = radians(lat1)
@@ -26,12 +27,22 @@ id_md ="ed4q-f8tm"
 app_id = "fuixaI8OmedLW38WcI00DnoCn"
 
 api_csv = "https://opendata.maryland.gov/resource/ed4q-f8tm.csv?"
+location = os.path.dirname(os.path.realpath(__file__))
+def get_zips():
+    
+    fName = os.path.join(location, 'data', 'superzip.csv')
+    zips = pd.read_csv(fName).query("state=='MD'")
+    zips = zips.assign(college = zips.college.str.replace("%", "").map(float))[["zipcode", "centile", "superzip", "rank","adultpop", "households", "college", "income"]]
 
+    return zips
 
-zips = pd.read_csv("data/superzip.csv").query("state=='MD'")
-zips = zips.assign(college = zips.college.str.replace("%", "").map(float))[["zipcode", "centile", "superzip", "rank","adultpop", "households", "college", "income"]]
+zips = get_zips()
 
-def select_vars(vars = pd.read_csv("data/vars.csv")):
+def select_vars(vars =pd.DataFrame() ):
+    if vars.empty:
+        
+        fName = os.path.join(location, 'data', 'vars.csv')
+        vars = pd.read_csv(fName)
     vars = vars.dropna().assign(sel = vars.api_field + " as " + vars.short_name)[["sel"]]
     statement = "SELECT " + ' , '.join(vars.sel)
 
@@ -149,8 +160,6 @@ def get_query(df, miles =1):
         sales_segment_1_consideration_mdp_field_considr1_sdat_field_90 > 0 AND
         sales_segment_2_consideration_sdat_field_110 > 0 AND
         within_circle(latitude_longitude, {lat}, {lon}, {miles})
-
-
     LIMIT 10000
     '''.format(**q_params)
     return query
