@@ -1,4 +1,5 @@
 #Get data
+import numpy as np
 import pandas as pd
 import difflib
 pd.options.display.max_columns = 500
@@ -76,6 +77,7 @@ def where_meta(props):
 
 
 def clean_addresses(addresses):
+    
     props_str = addresses.upper()
     props_str = props_str.replace("STREET", "ST")
     props_str = props_str.replace("AVENUE", "AVE")
@@ -145,11 +147,17 @@ def get_params(df, miles = 1):
         d[col] = df[col].iloc[0]
     return d
 
+def sdat_meta(address):
+    df = sdat_query(where=where_meta(address))
+    df = add_features(df)
+    return df
+
 def sdat_comps(address=None, df=pd.DataFrame(), miles=1, year=2019, low_sqft=.9, high_sqft=1.1, *args):
     if df.empty: df = sdat_query(where=where_meta(address))
     comps = sdat_query(where=where_comps(lat = df.lat[0], lon=df.lon[0],miles=miles, year=year))
     land_use = "'" + df.land_use[0] + "'"
     comps = comps.query(f"land_use == {land_use}")
+    comps = add_features(comps)
     return comps
 
 def get_query(df, miles =1):
@@ -167,9 +175,19 @@ def get_query(df, miles =1):
 
 
 def add_features(df, dc =dict(lat=38.9072, lon=-77.036)):
+
+    def acre(df):
+        try:
+            res = df.land_area_unit.str.replace("S", "1").str.replace("A", "43560")
+            res = pd.to_numeric(res, errors="coerce")
+            res = res * df.land_area
+        except:
+            res = None
+        return res
     def date_delta(x):
         try:
-            res = (pd.to_datetime(x.sale_date) - pd.to_datetime(x.sale_date2))
+            res = pd.to_datetime(x.sale_date) - pd.to_datetime(x.sale_date2)
+            res = res.dt.days / 365
             
         except:
             res = None
@@ -177,17 +195,21 @@ def add_features(df, dc =dict(lat=38.9072, lon=-77.036)):
         
     try:
         df = df.merge(zips, how='left', on="zipcode")
+        df = df.assign(sale_date = pd.to_datetime(df.sale_date, errors='coerce'),
+                       sale_date2 = pd.to_datetime(df.sale_date2, errors='coerce')
+
+                       )
         df = df.assign(basement = df["style"].str.contains("with basement", case=False),
-                  stories = df["style"].str.replace(".*STRY *(.*?) *Story.*", "\\1"),
+                  stories = df["style"].str.replace(".*STRY *(.*?) *Story.*", "\\1").str.replace("TH |Center|End|STRY|", "",case=False),
                   year_built = df.year_built.map(int),
-                  age = pd.DatetimeIndex(pd.to_datetime(df.sale_date)).year - df.year_built.map(int) ,
-                  acre = df.land_area / df.land_area_unit.str.replace("A", "1").str.replace("S", "43560").map(int),
+                  age = df.sale_date.dt.year - df.year_built.map(int) ,
+                  acre = acre(df),
                   price_delta = df.price - df.price2,
-                  date_delta = df.apply(date_delta, axis=1).dt.days / 365,
+                  date_delta = df.apply(date_delta, axis=1),
                   
                   factor_commercial = df.factor_commercial.str.contains("commerical", case=False),
-                  yearSold = pd.DatetimeIndex(pd.to_datetime(df.sale_date)).year,
-                  monthSold = pd.DatetimeIndex(pd.to_datetime(df.sale_date)).month,
+                  yearSold = df.sale_date.dt.year,
+                  monthSold = df.sale_date.dt.month,
                   isCompany = df.seller.str.contains("INC|LLC|BUILDER", case=False),
                   isBank = df.seller.str.contains("BANK|MORTGAGE|MORTG|SAVING|SECRETARY", case=False)
                   )
@@ -201,85 +223,67 @@ def add_features(df, dc =dict(lat=38.9072, lon=-77.036)):
         
     return df
                   
+from sklearn.neighbors import NearestNeighbors
 
-def filter_comps(df, price = 75000, turn_around = 400, t_time = pd.to_datetime('2018-01-01')):
-    df_copy = df[
-    (df['price_change']>=price) & 
-    (df['date_change']<=turn_around) & 
-    (df.date > pd.to_datetime(t_time))
-    ]
-    return df_copy
+class Home:
+    view_basic=["address","price", "sqft", "acre"]
+    view_basic_analyze = ["price", "sqft", "acre", "basement", "stories"]
+    #view_analyze = [col for col in df.columns]
+    
+    def __init__(self, address):
+        self.address = address
+        self.meta = sdat_meta(address)
+        self.comps = sdat_comps(df=self.meta)
+        self.comps = self.comps.assign(dist_address = self.comps.apply(lambda x: distance(x.lat, x.lon,self.meta["lat"][0], self.meta["lon"][0]), axis=1))
+        self.comps_filtered = self.filter_comps()
+        self.comps_knn = self.knn()
+        self.arv = self.arv()
 
 
-def find_comps(prop, update=True):
-    if update:
-        done_comps = []
-    else:
-        comps_df =  pd.read_csv('comps.csv')
-        done_comps = comps_df.id.unique()        
-    try:
-        meta, comp = get_comps_sdat(prop)
-        if comp.id.iloc[0] in done_comps:
-            #do nothing
-            print(prop, 'already done')
-            filt_comp = filter_comps(comps_df.query('id == {}'.format(comps.id.iloc[0])))
-            
-        else:
-            #load comp to csv
-            filt_comp = filter_comps(comp)
-            #filt_comp.to_csv('comps.csv', mode="a", header=False, index = False)
+    def filter_comps(self, price = 75000, turn_around = 400, t_time = pd.to_datetime('2018-01-01')):
+        df = self.comps.copy()
+        df_copy = df[
+                (
+                (df.price_delta>=price) & 
+                (df['date_delta']<=turn_around) & 
+                (pd.to_datetime(df["sale_date"]) > pd.to_datetime(t_time)) &
+                ((df.sqft > int(self.meta.sqft[0] *.8)) & (df.sqft < int(self.meta.sqft[0] * 1.2))) &
+                ((df.isCompany ==True) | (df.flip==True)) &
+                (df.basement == self.meta.basement[0])
+                  ) 
+                    ]
+        return df_copy
 
-    except:
-        search_address = prop.split()[:-1]
-        search_address = ' '.join(search_address)
-        try:
-            if comp.id.iloc[0] in done_comps:
-                #do nothing
-                print(prop, 'already done')
-            else:
-                meta, comp = get_comps_sdat(search_address)
-                filt_comp = filter_comps(comp, price=50000)
-                #filt_comp.to_csv('comps.csv', mode="a", header=False, index = False)
-        except:
-            print('{}: Could not find property'.format(prop))
-            return None
-    
-    results = (meta, filt_comp)    
-    return results #filt_comp
+    def arv(self):
+        return self.comps_filtered.price.describe().reset_index()
+    def knn(self):
 
-def potential_property(f=None, df=None, address_col='address'):
-    '''
-    Function will create comps for each property in csv
-    
-    PARAMS:
-        f: filename
-        df: optional parameter to provide dataframe
-        address_col: name of column that contains address
-    '''
-    if isinstance(df, pd.DataFrame): pass
-    else: df = pd.read_csv(f)
-    df.columns = df.columns.str.lower()
-    address_col = address_col.lower()
-    comps = pd.read_csv('comps.csv')
-    done_comps = [] #comps.id.unique()
-    
-    properties = pd.read_csv('properties.csv')
-    
-    
-    
-    for prop in df[address_col].unique():
-        comps = find_comps(prop)
-        if isinstance(comps, pd.DataFrame):
-            #do something
-            vals = {'Address': [comps.id.iloc[0]],
-                    'Re-Sale Price': [comps['price'].median()], 
-                    'List Price': [df[df['address'] == prop]['current price'].mean()] 
-                   }
-            tmp_prop = pd.DataFrame(vals)
-            tmp_prop['Margin'] = tmp_prop['Re-Sale Price'] - tmp_prop['List Price']
-            properties = properties.append(tmp_prop, ignore_index=True)
-            tmp_prop = None
-        else:
-            print(prop, 'could not be added')
-        comps = None
-    return properties
+        return 1
+
+    def ols(self):
+
+        return 1
+
+    def rf():
+
+        return 1
+
+
+class Homes():
+    def __init__(self, addresses):
+        self.addresses = addresses
+        self.homes_dict = {adr: Home(adr) for adr in addresses}
+        self.meta_all = pd.concat([self.homes_dict[adr].meta for adr in addresses])
+        self.comps_all = pd.concat([self.homes_dict[adr].comps.assign(Home=adr) for adr in addresses])
+        self.comps_filtered = pd.concat([self.homes_dict[adr].comps_filtered.assign(Home=adr) for adr in addresses])
+        
+
+    def view(self):
+        prices = self.comps_filtered.groupby("Home").price.describe().reset_index()
+        prices = prices.assign(address = prices.Home.apply(clean_addresses))
+        prices.drop(columns=['Home'],inplace=True) 
+        df = self.meta_all[['address', 'sqft']].merge(prices, how='left', on='address')
+        return df
+
+#h = Home('1303 Alberta Dr')
+hs = Homes(["1303 Alberta Dr", "1406 Iron Forge Rd"])
