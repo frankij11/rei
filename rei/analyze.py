@@ -10,41 +10,13 @@ from sklearn.ensemble import RandomForestRegressor
 from sklearn import metrics, impute, pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
-import sdat
+
+try:
+    from . import sdat
+except:
+    import sdat
 
 import joblib
-
-w = sdat.where_comps(miles=20)
-df = sdat.sdat_query(where=w)
-land = ["Residential (R)", "Town House (TH)"]
-df = df.query(f"land_use == {land} & sqft > 0 & price <5000000 & price > 40000")
-df = sdat.add_features(df)
-df = df.assign(median_price=None,quality = None)
-for meta,frame in df.assign(sqft=round(df.sqft, -2)).groupby(["land_use","zipcode","basement", "sqft"]):
-    try:
-        res = pd.qcut(frame.price, q=[0,.05, .45, .55, .95,1], labels=["bottom","below", "avg", "above", "top"])
-    except:
-        res = None
-    df.loc[frame.index, 'quality'] = res
-##    try:
-##        res = frame.price.median()
-##    except:
-##        res = np.nan
-##    df.loc[frame.index, 'median_price'] = res
-##
-##df.median_price = pd.to_numeric(df.median_price)
-
-data = df.copy()
-#df[["price","zipcode","land_use", "stories","sqft", "acre", "age","quality"]].copy() 
-
-X=data.drop(columns='price')  
-y=df.price
-#cat_vars = X.select_dtypes('object').columns.tolist()
-#num_vars = X.select_dtypes(np.number).drop(columns='price').columns.tolist()
-#data = data.dropna(subset=cat_vars)
-#data = data[data.sqft > 0]
-
-
 
 class AddMedianPrice(BaseEstimator, TransformerMixin):
     def __init__(self, variables=list()):
@@ -146,48 +118,81 @@ class Clean(BaseEstimator, TransformerMixin):
 
         return X
 
-# Parameters of pipelines can be set using ‘__’ separated parameter names:
-param_grid = {
-    'rf__bootstrap': [True],
-    'rf__max_depth': [80, 100],
-    'rf__max_features': [2, 3],
-    'rf__min_samples_leaf': [5],
-    #'rf__min_samples_split': [8, 10, 12],
-    'rf__n_estimators': [100, 250, 500, 1000]
-}
+if __name__ == '__main__':
+    w = sdat.where_comps(miles=20)
+    df = sdat.sdat_query(where=w)
+    land = ["Residential (R)", "Town House (TH)"]
+    df = df.query(f"land_use == {land} & sqft > 0 & price <5000000 & price > 40000")
+    df = sdat.add_features(df)
+    df = df.assign(median_price=None,quality = None)
+    for meta,frame in df.assign(sqft=round(df.sqft, -2)).groupby(["land_use","zipcode","basement", "sqft"]):
+        try:
+            res = pd.qcut(frame.price, q=[0,.05, .45, .55, .95,1], labels=["bottom","below", "avg", "above", "top"])
+        except:
+            res = None
+        df.loc[frame.index, 'quality'] = res
+    ##    try:
+    ##        res = frame.price.median()
+    ##    except:
+    ##        res = np.nan
+    ##    df.loc[frame.index, 'median_price'] = res
+    ##
+    ##df.median_price = pd.to_numeric(df.median_price)
 
-num_pipe = ColumnTransformer([
-    ('num_missing', impute.SimpleImputer(), X.select_dtypes(np.number).columns.tolist())
-    ])
+    data = df.copy()
+    #df[["price","zipcode","land_use", "stories","sqft", "acre", "age","quality"]].copy() 
 
-preprocess = pipeline.Pipeline([
-    ('addMedian', AddMedianPrice(variables=['land_use', 'zipcode', 'basement'])),
-    ('clean',Clean(drop_cols=["zipcode", "land_area_unit", 'tax_land_value', 'tax_improvement', 'tax_preferential_land_value', 'tax_assessment', 'tax_grade'])),
-    ('num_missing',num_pipe)
-    ])
-
-pipe = pipeline.Pipeline([
-    ('preprocess', preprocess),
-    ('rf',RandomForestRegressor())
-    ])
-    
-search = GridSearchCV(estimator = pipe, param_grid = param_grid, 
-                          cv = 5, n_jobs = -1, verbose = 2)
-
-search.fit(X, y)
-
-                   
-
-print("Best parameter (CV score=%0.3f):" % search.best_score_)
-print(search.best_params_)
-
-preds = search.predict(X)
-per_error = preds / y
-print(metrics.r2_score(y,preds))
-print(metrics.mean_absolute_error(y,preds))
-print(np.mean(preds / y))
+    X=data.drop(columns='price')  
+    y=df.price
+    #cat_vars = X.select_dtypes('object').columns.tolist()
+    #num_vars = X.select_dtypes(np.number).drop(columns='price').columns.tolist()
+    #data = data.dropna(subset=cat_vars)
+    #data = data[data.sqft > 0]
 
 
-# My House Guess
-h = sdat.Home('1303 Alberta Dr')
-search.predict(h.meta.assign(quality='above'))
+
+    # Parameters of pipelines can be set using ‘__’ separated parameter names:
+    param_grid = {
+        'rf__bootstrap': [True],
+        'rf__max_depth': [80, 100],
+        'rf__max_features': [2, 3],
+        'rf__min_samples_leaf': [5],
+        #'rf__min_samples_split': [8, 10, 12],
+        'rf__n_estimators': [100, 250, 500, 1000]
+    }
+
+    num_pipe = ColumnTransformer([
+        ('num_missing', impute.SimpleImputer(), X.select_dtypes(np.number).columns.tolist())
+        ])
+
+    preprocess = pipeline.Pipeline([
+        ('addMedian', AddMedianPrice(variables=['land_use', 'zipcode', 'basement'])),
+        ('clean',Clean(drop_cols=["zipcode", "land_area_unit", 'tax_land_value', 'tax_improvement', 'tax_preferential_land_value', 'tax_assessment', 'tax_grade'])),
+        ('num_missing',num_pipe)
+        ])
+
+    pipe = pipeline.Pipeline([
+        ('preprocess', preprocess),
+        ('rf',RandomForestRegressor())
+        ])
+        
+    search = GridSearchCV(estimator = pipe, param_grid = param_grid, 
+                            cv = 5, n_jobs = -1, verbose = 2)
+
+    search.fit(X, y)
+
+                    
+
+    print("Best parameter (CV score=%0.3f):" % search.best_score_)
+    print(search.best_params_)
+
+    preds = search.predict(X)
+    per_error = preds / y
+    print(metrics.r2_score(y,preds))
+    print(metrics.mean_absolute_error(y,preds))
+    print(np.mean(preds / y))
+
+
+    # My House Guess
+    h = sdat.Home('1303 Alberta Dr')
+    search.predict(h.meta.assign(quality='above'))

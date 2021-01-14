@@ -12,7 +12,10 @@ import numpy as np
 import time
 from tqdm import tqdm
 
-from . import sdat
+try:
+    from . import sdat
+except:
+    import sdat
 
 redfin_dunkirk = '''https://www.redfin.com/stingray/api/gis-csv?al=3&max_price=650000&min_stories=1&num_homes=350&ord=redfin-recommended-asc&page_number=1&poly=-76.7469%2038.63292%2C-76.46564%2038.63292%2C-76.46564%2038.78948%2C-76.7469%2038.78948%2C-76.7469%2038.63292&school_rating=7-&school_types=1,2,3&sf=1,2,3,5,6,7&status=9&uipt=1,2,3,4,5,6&v=8'''
 def redfin(url=None):

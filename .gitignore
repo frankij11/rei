@@ -168,3 +168,6 @@ vignettes/*.pdf
 
 # R Environment Variables
 .Renviron
+rei/config/gspread_creds.json
+.gitignore
+rei/pipe.joblib
