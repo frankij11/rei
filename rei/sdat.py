@@ -60,7 +60,7 @@ def where_comps(lat=38.8159, lon=-76.7497, miles = 1, year = 2019, land_use= "('
         within_circle(mappable_latitude_and_longitude, {lat}, {lon}, {miles}) AND
         land_use_code_mdp_field_lu_desclu_sdat_field_50 IN {land_use}"""
         
-    if key, value in kwargs.items():
+    for key, value in kwargs.items():
         w = w + " AND " + key + str(value)
 
     return w.replace("\n", "").replace("  ", "")
