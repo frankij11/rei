@@ -50,14 +50,19 @@ def select_vars(vars =pd.DataFrame() ):
     return statement
 
 
-def where_comps(lat=38.8159, lon=-76.7497, miles = 1, year = 2019):
+def where_comps(lat=38.8159, lon=-76.7497, miles = 1, year = 2019, land_use= "(Residential (R), " **kwargs):
     miles = miles/0.000621371 #convert to meters
    
     w = f""" WHERE 
         
         sales_segment_1_transfer_date_yyyy_mm_dd_mdp_field_tradate_sdat_field_89 >= {"'" + str(year) +"%'"} AND 
         sales_segment_1_consideration_mdp_field_considr1_sdat_field_90 > 10000 AND 
-        within_circle(mappable_latitude_and_longitude, {lat}, {lon}, {miles})""" #.format(**meta)
+        within_circle(mappable_latitude_and_longitude, {lat}, {lon}, {miles}) AND
+        land_use_code_mdp_field_lu_desclu_sdat_field_50 in {land_use}"""
+        
+    if key, value in kwargs.items():
+        w = w + " AND " + key + str(value)
+
     return w.replace("\n", "").replace("  ", "")
         
 def where_meta(props):
