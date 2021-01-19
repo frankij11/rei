@@ -66,7 +66,7 @@ def where_comps(lat=38.8159, lon=-76.7497, miles=1, year=2019, land_use=["Reside
         
         sales_segment_1_transfer_date_yyyy_mm_dd_mdp_field_tradate_sdat_field_89 >= {"'" + str(year) +"%'"} AND 
         sales_segment_1_consideration_mdp_field_considr1_sdat_field_90 > 10000 AND 
-        within_circle(mappable_latitude_and_longitude, {lat}, {lon}, {miles}) """
+        within_circle(mappable_latitude_and_longitude, {lat}, {lon}, {miles})"""
 
     # construct land_use    
     if type(land_use) == str: land_use = [land_use]
@@ -308,6 +308,7 @@ class Home:
 
 
 class Homes():
+    
     def __init__(self, addresses):
         self.addresses = addresses
         self.homes_dict = {adr: Home(adr) for adr in addresses}
@@ -327,6 +328,8 @@ class Homes():
             prices, how='left', on='address')
         return df
 
+    def add_home(address):
+        self.homes_dict = {adr: Home(adr) for adr in addresses}
 
 if __name__ == '__main__':
     #h = Home('1303 Alberta Dr')

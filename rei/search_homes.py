@@ -91,9 +91,9 @@ def auction_ac():
         prev_date = pd.to_datetime(dates[d] + row[0:8])
     df = pd.DataFrame(res, columns=['sale_time', 'Address', 'deposit_in_$k,000', 'cancelled'])
     adrs = df["Address"].str.split(",", expand = True) 
-    df.Address = adrs[:][0].str.replace(".","")
-    df.City = adrs[:][1]
-    df.zip = adrs[:][2]
+    df["Address"] = adrs[:][0].str.replace(".","")
+    df["City"] = adrs[:][1]
+    df["zip"] = adrs[:][2]
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_').str.replace('(', '').str.replace(')', '')
     df['source'] = url
     
