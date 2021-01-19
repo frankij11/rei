@@ -276,15 +276,21 @@ class Home:
         self.comps_knn = self.knn()
         self.arv = self.arv()
 
-    def filter_comps(self, price=75000, turn_around=400, t_time=pd.to_datetime('2018-01-01')):
+    def filter_comps(self, low_sqft=.8, high_sqft=1.2, price=75000, turn_around=400, t_time=pd.to_datetime('2018-01-01')):
+        
+        if low_sqft < 10: low_sqft = self.meta.sqft[0] * low_sqft
+        if high_sqft < 10: high_sqft = self.meta.sqft[0] * high_sqft
+
         df = self.comps.copy()
         df_copy = df[
             (
-                (df.price_delta >= price) &
-                (df['date_delta'] <= turn_around) &
-                (pd.to_datetime(df["sale_date"]) > pd.to_datetime(t_time)) &
-                ((df.sqft > int(self.meta.sqft[0] * .8)) & (df.sqft < int(self.meta.sqft[0] * 1.2))) &
-                ((df.isCompany == True) | (df.flip == True)) &
+                #(df.price_delta >= price) &
+                #(df['date_delta'] <= turn_around) &
+                #(pd.to_datetime(df["sale_date"]) > pd.to_datetime(t_time)) &
+                (df.sqft > int(self.meta.sqft[0] * .8)) & 
+                (df.sqft < int(self.meta.sqft[0] * 1.2)) &
+                (df.isBank == False) & 
+                #((df.isCompany == True) | (df.flip == True)) &
                 (df.basement == self.meta.basement[0])
             )
         ]
@@ -307,8 +313,11 @@ class Home:
 
 
 class Homes():
-    
+    #__home__ = Home("1303 Alberta Dr")
+    #__members__ = [attr for attr in dir(__home__) if not callable(getattr(__home__, attr)) and not attr.startswith("__")]
+
     def __init__(self, addresses):
+        self.add(addresses)
         self.addresses = addresses
         self.homes_dict = {adr: Home(adr) for adr in addresses}
         self.meta_all = pd.concat(
@@ -327,8 +336,15 @@ class Homes():
             prices, how='left', on='address')
         return df
 
-    def add_home(address):
-        self.homes_dict = {adr: Home(adr) for adr in addresses}
+    def add(self,addresses):
+        
+
+        if type(address) == str: address = [address]
+        for adr in addresses:
+            
+            self.homes_dict[address] = Home(adr)
+            
+
 
 if __name__ == '__main__':
     #h = Home('1303 Alberta Dr')

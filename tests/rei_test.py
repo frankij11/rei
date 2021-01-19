@@ -1,4 +1,5 @@
 #%%
+import hvplot.pandas
 from rei import sdat
 print("Hello world")
 #%%
@@ -11,4 +12,11 @@ print("Hello world")
 
 meta = H.meta
 comps = H.comps
+# %%
+comps.hvplot(x='sqft', y='price', kind='scatter', color='basement')
+# %%
+H.comps_filtered
+# %%
+filt=comps.query(f"""(sqft > {meta.sqft[0] * .8} & sqft < {H.meta.sqft[0] * 1.2}) & (basement == {meta.basement[0]} ) & (isBank ==False | flip==True | isCompany==True)""")[['address', 'sqft', 'price', 'sale_date', 'dist_kj']]
+filt.sort_values('price')
 # %%
