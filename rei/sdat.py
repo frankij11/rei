@@ -182,9 +182,8 @@ def sdat_meta(address):
 def sdat_comps(address=None, df=pd.DataFrame(), miles=1, year=2020, low_sqft=.9, high_sqft=1.1, *args):
     if df.empty:
         df = sdat_query(where=where_meta(address))
-    land_use = "('" + df.land_use[0] + "')"
     comps = sdat_query(where=where_comps(
-        lat=df.lat[0], lon=df.lon[0], miles=miles, year=year, land_use=land_use))
+        lat=df.lat[0], lon=df.lon[0], miles=miles, year=year, land_use=df.land_use[0]))
    # comps = comps.query(f"land_use == {land_use}")
     comps = add_features(comps)
     return comps
