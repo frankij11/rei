@@ -1,13 +1,14 @@
 #%%
 import hvplot.pandas
 from rei import sdat
-print("Hello world")
+import statsmodels.formula.api as smf
 #%%
 
 #%%
-df = sdat.sdat_query(where=sdat.where_comps(miles=1, year=0))
+#df = sdat.sdat_query(where=sdat.where_comps(miles=1, year=0))
 H= sdat.Home('1303 Alberta Dr')
-print("Hello world")
+H.ols()
+
 #%%
 
 meta = H.meta

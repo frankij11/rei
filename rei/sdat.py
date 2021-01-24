@@ -351,7 +351,7 @@ class Homes():
     def add(self,addresses):
         
 
-        if type(address) == str: address = [address]
+        if type(addresses) == str: address = [addresses]
         for adr in addresses:
             
             self.homes_dict[address] = Home(adr)

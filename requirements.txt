@@ -2,3 +2,8 @@ numpy
 pandas >= 1
 requests
 requests-html
+gspread
+sklearn
+statsmodels
+holoviews
+hvplot
