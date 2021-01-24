@@ -1,5 +1,7 @@
 # Get data
 from sklearn.neighbors import NearestNeighbors
+import statsmodels.formula.api as smf
+
 from math import radians, sin, cos, acos
 import os
 import urllib
@@ -180,12 +182,21 @@ def sdat_meta(address):
 
 
 def sdat_comps(address=None, df=pd.DataFrame(), miles=1, year=2020, low_sqft=.9, high_sqft=1.1, *args):
-    if df.empty:
-        df = sdat_query(where=where_meta(address))
-    comps = sdat_query(where=where_comps(
-        lat=df.lat[0], lon=df.lon[0], miles=miles, year=year, land_use=df.land_use[0]))
-   # comps = comps.query(f"land_use == {land_use}")
+    if df.empty: df = sdat_query(where=where_meta(address))
+    comps = sdat_query(
+        where=where_comps(
+            lat=df.lat[0], 
+            lon=df.lon[0], 
+            miles=miles, 
+            year=year, 
+            land_use=df.land_use[0]
+            )
+        )
+ 
     comps = add_features(comps)
+    comps = comps.assign(
+        dist_comp = comps.apply(lambda x: distance(x.lat, x.lon, df["lat"][0], df["lon"][0]), axis=1)
+    )
     return comps
 
 
@@ -304,8 +315,9 @@ class Home:
         return 1
 
     def ols(self):
-
-        return 1
+        self.lm = smf.ols('price~sqft + basement', data=self.comps).fit()
+        pred = self.lm.predict(self.meta)
+        return pred
 
     def rf():
 
