@@ -7,6 +7,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 from sklearn.model_selection import GridSearchCV
 from sklearn.ensemble import RandomForestRegressor
+from sklearn.linear_model import LassoCV
 from sklearn import metrics, impute, pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.compose import ColumnTransformer
@@ -119,12 +120,10 @@ class Clean(BaseEstimator, TransformerMixin):
         return X
 
 if __name__ == '__main__':
-    w = sdat.where_comps(miles=20)
+    w = sdat.where_comps(miles=20, land_use=["Residential (R)", "Town House (TH)"], year="2020.06")
     df = sdat.sdat_query(where=w)
-    land = ["Residential (R)", "Town House (TH)"]
-    df = df.query(f"land_use == {land} & sqft > 0 & price <5000000 & price > 40000")
     df = sdat.add_features(df)
-    df = df.assign(median_price=None,quality = None)
+    df = df.query('sqft >0').assign(quality = None)
     for meta,frame in df.assign(sqft=round(df.sqft, -2)).groupby(["land_use","zipcode","basement", "sqft"]):
         try:
             res = pd.qcut(frame.price, q=[0,.05, .45, .55, .95,1], labels=["bottom","below", "avg", "above", "top"])
@@ -139,11 +138,14 @@ if __name__ == '__main__':
     ##
     ##df.median_price = pd.to_numeric(df.median_price)
 
-    data = df.copy()
+    data=df.copy()
+    #data = df[["price","zipcode","land_use", "stories",'basement',"sqft", "acre", "age","sale_type","quality"]].copy()
     #df[["price","zipcode","land_use", "stories","sqft", "acre", "age","quality"]].copy() 
 
     X=data.drop(columns='price')  
     y=df.price
+
+    mods = dict()
     #cat_vars = X.select_dtypes('object').columns.tolist()
     #num_vars = X.select_dtypes(np.number).drop(columns='price').columns.tolist()
     #data = data.dropna(subset=cat_vars)
@@ -161,38 +163,48 @@ if __name__ == '__main__':
         'rf__n_estimators': [100, 250, 500, 1000]
     }
 
-    num_pipe = ColumnTransformer([
-        ('num_missing', impute.SimpleImputer(), X.select_dtypes(np.number).columns.tolist())
-        ])
+    #num_pipe = ColumnTransformer([
+    #    ('num_missing', impute.SimpleImputer(), X.select_dtypes(np.number).columns.tolist())
+    #    ])
 
     preprocess = pipeline.Pipeline([
         ('addMedian', AddMedianPrice(variables=['land_use', 'zipcode', 'basement'])),
-        ('clean',Clean(drop_cols=["zipcode", "land_area_unit", 'tax_land_value', 'tax_improvement', 'tax_preferential_land_value', 'tax_assessment', 'tax_grade'])),
-        ('num_missing',num_pipe)
+        ('clean',Clean(drop_cols=["sale_date", "sale_date2","zipcode", "land_area_unit", 'tax_land_value', 'tax_improvement', 'tax_preferential_land_value', 'tax_assessment', 'tax_grade'])),
+        ('num_missing', impute.SimpleImputer())
+        #('num_missing',num_pipe)
         ])
 
-    pipe = pipeline.Pipeline([
+    mods["rf"] = pipeline.Pipeline([
         ('preprocess', preprocess),
         ('rf',RandomForestRegressor())
         ])
-        
+
+    mods["lasso"] = pipeline.Pipeline([
+        ('preprocess', preprocess),
+        ('lasso',LassoCV(cv=10,random_state=3))
+        ])   
+
     search = GridSearchCV(estimator = pipe, param_grid = param_grid, 
                             cv = 5, n_jobs = -1, verbose = 2)
 
     search.fit(X, y)
-
-                    
-
     print("Best parameter (CV score=%0.3f):" % search.best_score_)
     print(search.best_params_)
 
-    preds = search.predict(X)
-    per_error = preds / y
-    print(metrics.r2_score(y,preds))
-    print(metrics.mean_absolute_error(y,preds))
-    print(np.mean(preds / y))
+                    
+    for mod in mods:
+        print(mod)
+        search = mods[mod]
+        search.fit(X, y)
+
+
+        preds = search.predict(X)
+        per_error = preds / y
+        print(metrics.r2_score(y,preds))
+        print(metrics.mean_absolute_error(y,preds))
+        print(np.mean(preds / y))
 
 
     # My House Guess
-    h = sdat.Home('1303 Alberta Dr')
-    search.predict(h.meta.assign(quality='above'))
+        h = sdat.Home('1303 Alberta Dr')
+        print("Prediction: ",search.predict(h.meta.assign(quality='above')))
