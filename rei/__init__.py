@@ -5,6 +5,8 @@ from pkgutil import iter_modules
 from pathlib import Path
 from importlib import import_module
 
+from rei.sdat import sdat_meta,sdat_comps
+
 # iterate through the modules in the current package
 package_dir = Path(__file__).resolve().parent
 for (_, module_name, _) in iter_modules([package_dir]):

@@ -9,6 +9,8 @@ import requests
 import numpy as np
 import pandas as pd
 import difflib
+import tqdm
+from concurrent.futures import ThreadPoolExecutor
 pd.options.display.max_columns = 500
 
 
@@ -308,7 +310,7 @@ class Home:
         return df_copy
 
     def arv(self):
-        return self.comps_filtered.price.describe().reset_index()
+        return self.comps_filtered[['price', 'sqft']].describe().reset_index()
 
     def knn(self):
 
@@ -329,9 +331,11 @@ class Homes():
     #__members__ = [attr for attr in dir(__home__) if not callable(getattr(__home__, attr)) and not attr.startswith("__")]
 
     def __init__(self, addresses):
-        self.add(addresses)
+        
         self.addresses = addresses
-        self.homes_dict = {adr: Home(adr) for adr in addresses}
+        self.homes_dict = {adr: adr for adr in addresses}
+        
+        self.add(addresses)
         self.meta_all = pd.concat(
             [self.homes_dict[adr].meta for adr in addresses])
         self.comps_all = pd.concat(
@@ -352,9 +356,11 @@ class Homes():
         
 
         if type(addresses) == str: addresses = [addresses]
-        for adr in addresses:
+        with ThreadPoolExecutor(max_workers=None) as executor:
+            homes = executor.map(Home,addresses,timeout = 20)
+        for h in homes:
             
-            self.homes_dict[adr] = Home(adr)
+            self.homes_dict[h.address] = h
             
 
 
