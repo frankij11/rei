@@ -184,7 +184,7 @@ if __name__ == '__main__':
         ('lasso',LassoCV(cv=10,random_state=3))
         ])   
 
-    search = GridSearchCV(estimator = pipe, param_grid = param_grid, 
+    search = GridSearchCV(estimator = mods['rf'], param_grid = param_grid, 
                             cv = 5, n_jobs = -1, verbose = 2)
 
     search.fit(X, y)
