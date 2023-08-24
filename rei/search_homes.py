@@ -44,8 +44,8 @@ def redfin2():
 def auction_hw():
     #url ='https://www.hwestauctions.com/assets/php4/tabbedWebsite.php'
     url = 'https://www.hwestauctions.com/schedule.v4.php'
-    session = requests_html.HTMLSession()
-    r = session.get(url)
+    session = requests_html.AsyncHTMLSession()
+    r = await session.get(url)
     #r.html.render()
     data = pd.read_html(r.html.html)
     r.close()
@@ -63,8 +63,8 @@ def auction_hw():
 
 def auction_ac():
     url ='https://realestate.alexcooper.com/foreclosures?limit=100&auction_county=Prince+George%27s+County'
-    session = requests_html.HTMLSession()
-    r = session.get(url)
+    session = requests_html.AsyncHTMLSession()
+    r = await session.get(url)
     r.html.render()
     soup = BeautifulSoup(r.html.html, "html.parser")
     dates_ = soup.find_all('div', attrs={"class": "full-date"})
