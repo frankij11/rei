@@ -95,7 +95,10 @@ def where_meta(props):
         props = [
             "'" + clean_addresses(prop.replace("'", "")) + "'" for prop in props]
 
-    props_str = ",".join(props)
+    try:
+        props_str = ",".join(props)
+    except:
+        props_str = "NONE"
 
     w = f" WHERE mdp_street_address_mdp_field_address in ({props_str}) "
 
