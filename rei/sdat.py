@@ -133,8 +133,11 @@ def sdat_query(api=api_csv, select=select_vars(), where="", limit=50000, return_
     if return_page > 0:
         return page
     else:
-        frame = pd.read_csv(page.url)
-
+        try:
+            frame = pd.read_csv(page.url)
+        except:
+            print(page.status_code)
+            return pd.DataFrame()
     page.close()
     return frame
 
@@ -241,8 +244,8 @@ def add_features(df, dc=dict(lat=38.9072, lon=-77.036)):
 
     try:
         df = df.merge(zips, how='left', on="zipcode")
-        df = df.assign(sale_date=pd.to_datetime(df.sale_date, errors='coerce'),
-                       sale_date2=pd.to_datetime(
+        df = df.assign(sale_date=lambda df: pd.to_datetime(df.sale_date, errors='coerce'),
+                       sale_date2=lambda df: pd.to_datetime(
                            df.sale_date2, errors='coerce')
 
                        )
@@ -271,8 +274,8 @@ def add_features(df, dc=dict(lat=38.9072, lon=-77.036)):
         df["dist_dc"] = df.apply(lambda x: distance(
             x.lat, x.lon, dc["lat"], dc["lon"]), axis=1)
         df["dist_kj"] = df.apply(lambda x: distance(x.lat, x.lon), axis=1)
-    except:
-        print("error adding features")
+    except Exception as e:
+        print(e, "error adding features")
 
     return df
 
