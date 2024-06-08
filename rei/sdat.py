@@ -111,7 +111,8 @@ def clean_addresses(addresses):
     props_str = props_str.replace("STREET", "ST")
     props_str = props_str.replace("AVENUE", "AVE")
     props_str = props_str.replace("DRIVE", "DR")
-    props_str = props_str.replace("LN", "LANE")
+    #props_str = props_str.replace("LN", "LANE")
+    props_str = props_str.replace("LANE", "LN")
     props_str = props_str.replace("TERRACE", "TER")
     props_str = props_str.replace("COURT", "CT")
     props_str = props_str.replace(" RD", " ROAD")
@@ -251,7 +252,7 @@ def add_features(df, dc=dict(lat=38.9072, lon=-77.036)):
                        )
         df = df.assign(basement=df["style"].str.contains("with basement", case=False),
                        stories=df["style"].str.replace(
-                           ".*STRY *(.*?) *Story.*", "\\1").str.replace("TH |Center|End|STRY|", "", case=False),
+                           ".*STRY *(.*?) *Story.*", "\\1").str.replace("TH |Center|End|STRY|", "", case=False, regex=True),
                        year_built=df.year_built.map(int),
                        age=df.sale_date.dt.year - df.year_built.map(int),
                        acre=acre(df),
@@ -259,13 +260,13 @@ def add_features(df, dc=dict(lat=38.9072, lon=-77.036)):
                        date_delta=df.apply(date_delta, axis=1),
 
                        factor_commercial=df.factor_commercial.str.contains(
-                           "commerical", case=False),
+                           "commerical", case=False,regex=True),
                        yearSold=df.sale_date.dt.year,
                        monthSold=df.sale_date.dt.month,
                        isCompany=df.seller.str.contains(
-                           "INC|LLC|BUILDER", case=False),
+                           "INC|LLC|BUILDER", case=False,regex=True),
                        isBank=df.seller.str.contains(
-                           "BANK|MORTGAGE|MORTG|SAVING|SECRETARY", case=False)
+                           "BANK|MORTGAGE|MORTG|SAVING|SECRETARY", case=False,regex=True)
                        )
         df["isNewConstr"] = (df.yearSold - df.year_built) <= 1
         df["flip"] = (df.price_delta > 50000) & (

@@ -6,7 +6,7 @@ from pathlib import Path
 from importlib import import_module
 
 from rei.sdat import sdat_meta,sdat_comps
-from rei import sdat, search_homes, analyze
+from rei import sdat,  analyze #search_homes,
 '''
 # iterate through the modules in the current package
 package_dir = Path(__file__).resolve().parent
