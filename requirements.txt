@@ -3,7 +3,7 @@ pandas >= 1
 requests
 requests-html
 gspread
-sklearn
+scikit-learn
 statsmodels
 holoviews
 hvplot
